@@ -5,20 +5,26 @@ const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const buttonContainerRef = useRef();
   const [pointPosition, setPointPosition] = useState({ x: 2, y: 8 });
+  const [previousPosition, setPreviousPosition] = useState(null);
 
-  useEffect(() => {
+  const initializeSvg = () => {
     const svg = d3.select(svgRef.current)
       .attr('width', 800)
       .attr('height', 400);
+    svg.selectAll('circle').remove();
 
-    const g = svg.append('g')
+    return svg.append('g')
       .attr('transform', 'translate(50,50)');
+  };
 
-    // Set the limits for the x and y axes
+  const createScales = () => {
     const xScale = d3.scaleLinear().domain([0, 16]).range([0, 600]);
     const yScale = d3.scaleLinear().domain([0, 8]).range([300, 0]); // Invert the y-scale
 
-    // Add custom vertical and horizontal lines
+    return { xScale, yScale };
+  };
+
+  const drawLines = (g, xScale, yScale) => {
     const verticalLines = [2, 6, 10, 14];
     verticalLines.forEach(x => {
       g.append('line')
@@ -40,8 +46,9 @@ const QuantumCircuitVisualization = () => {
         .attr('stroke', 'black')
         .attr('stroke-width', y === 0 ? 3 : 2);
     });
+  };
 
-    // Add custom labels
+  const addLabels = (g, xScale, yScale) => {
     const labels = [
       { x: 1.75, y: 4.25, text: '+', size: 12 },
       { x: 5.75, y: 4.25, text: '+i', size: 10 },
@@ -58,24 +65,25 @@ const QuantumCircuitVisualization = () => {
         .attr('alignment-baseline', 'middle')
         .text(label.text);
     });
+  };
 
-    // Create lines and points
-    const lines_x = [
-      { start: [2, 0], end: [2, 8], center: [2, 4], color: 'red', id: 'pauli-x' },
-      { start: [0, 4], end: [6, 4], center: [2, 4], color: 'red', id: 'pauli-x' },
-      { start: [6, 4], end: [14, 4], center: [10, 4], color: 'red', id: 'pauli-x' },
-      { start: [10, 0], end: [10, 8], center: [10, 4], color: 'red', id: 'pauli-x' }
-    ];
+  const lines_x = [
+    { start: [2, 0], end: [2, 8], center: [2, 4], color: 'red', id: 'pauli-x' },
+    { start: [0, 4], end: [6, 4], center: [2, 4], color: 'red', id: 'pauli-x' },
+    { start: [6, 4], end: [14, 4], center: [10, 4], color: 'red', id: 'pauli-x' },
+    { start: [10, 0], end: [10, 8], center: [10, 4], color: 'red', id: 'pauli-x' }
+  ];
 
-    const lines_y = [
-      { start: [6, 0], end: [6, 8], center: [6, 4], color: 'blue', id: 'pauli-y' },
-      { start: [2, 4], end: [10, 4], center: [6, 4], color: 'blue', id: 'pauli-y' },
-      { start: [10, 4], end: [16, 4], center: [14, 4], color: 'blue', id: 'pauli-y' },
-      { start: [14, 0], end: [14, 8], center: [14, 4], color: 'blue', id: 'pauli-y' }
-    ];
+  const lines_y = [
+    { start: [6, 0], end: [6, 8], center: [6, 4], color: 'blue', id: 'pauli-y' },
+    { start: [2, 4], end: [10, 4], center: [6, 4], color: 'blue', id: 'pauli-y' },
+    { start: [10, 4], end: [16, 4], center: [14, 4], color: 'blue', id: 'pauli-y' },
+    { start: [14, 0], end: [14, 8], center: [14, 4], color: 'blue', id: 'pauli-y' }
+  ];
 
+  const createLinesAndPoints = (g, xScale, yScale) => {
     const points = [
-      { position: pointPosition, color: 'yellow' }
+      { position: pointPosition, color: 'green' }
     ];
 
     const allLines = [...lines_x, ...lines_y];
@@ -92,17 +100,32 @@ const QuantumCircuitVisualization = () => {
         .attr('data-center-y', line.center[1]);
     });
 
+    g.selectAll('.previous-point').remove(); // Remove old points before adding a new one
+
     points.forEach(point => {
+      g.select('.current-point').remove(); // Remove any existing current point
       g.append('circle')
         .attr('cx', xScale(point.position.x))
         .attr('cy', yScale(point.position.y))
         .attr('r', 5)
         .attr('fill', point.color)
         .attr('data-initial-x', point.position.x)
-        .attr('data-initial-y', point.position.y);
-    });
+        .attr('data-initial-y', point.position.y)
+        .attr('class', 'current-point');
 
-    // Add buttons and interactions
+      if (previousPosition) {
+        g.append('circle')
+          .attr('cx', xScale(previousPosition.x))
+          .attr('cy', yScale(previousPosition.y))
+          .attr('r', 5)
+          .attr('fill', 'magenta')
+          .attr('class', 'previous-point')
+          .style('opacity', 0.5);
+      }
+    });
+  };
+
+  const setupButtons = () => {
     if (buttonContainerRef.current.children.length === 0) {
       const buttonContainer = d3.select(buttonContainerRef.current);
 
@@ -123,83 +146,124 @@ const QuantumCircuitVisualization = () => {
         rotateElements('.pauli-y', 90);
       });
     }
+  };
 
-    const rotateElements = (selector, angle) => {
-      const rad = (Math.PI / 180) * angle;
+  const rotateElements = (selector, angle) => {
+    const { xScale, yScale } = createScales();
+    const rad = (Math.PI / 180) * angle;
+    const g = d3.select(svgRef.current).select('g');
 
-      d3.selectAll(selector)
-        .each(function () {
-          const element = d3.select(this);
-          const cx = xScale(element.attr('data-center-x'));
-          const cy = yScale(element.attr('data-center-y'));
+    d3.selectAll(selector)
+      .each(function () {
+        const element = d3.select(this);
+        const cx = xScale(element.attr('data-center-x'));
+        const cy = yScale(element.attr('data-center-y'));
 
-          element.transition()
-            .duration(1000)
-            .attrTween("transform", function () {
-              return function (t) {
-                const currentAngle = t * rad;
-                const rotateX = Math.cos(currentAngle);
-                const rotateY = Math.sin(currentAngle);
-                const matrix = [
-                  rotateX, rotateY, -rotateY, rotateX,
-                  cx * (1 - rotateX) + cy * rotateY,
-                  cy * (1 - rotateX) - cx * rotateY
-                ];
-
-                return "matrix(" + matrix.join(",") + ")";
-              };
-            });
-        });
-      setPointPosition(prevPosition => {
-        let lines, closestCenter;
-
-        if (selector === '.pauli-x') {
-          lines = lines_x;
-        } else if (selector === '.pauli-y') {
-          lines = lines_y;
-        } else {
-          return prevPosition; // No change if not Pauli X or Y
-        }
-
-        // Find the closest center
-        closestCenter = lines.reduce((closest, line) => {
-          const distance = Math.abs(prevPosition.x - line.center[0]);
-          return distance < closest.distance ? { center: line.center, distance } : closest;
-        }, { center: lines[0].center, distance: Infinity }).center;
-
-        const [centerX, centerY] = closestCenter;
-        const x = prevPosition.x - centerX;
-        const y = prevPosition.y - centerY;
-        const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
-        const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
-        const newX = rotatedX + centerX;
-        const newY = rotatedY + centerY;
-        
-        g.selectAll('circle')
-          .transition()
+        element.transition()
           .duration(1000)
-          .attr('cx', xScale(newX))
-          .attr('cy', yScale(newY));
-        
-        return { x: newX, y: newY };
+          .attrTween("transform", function () {
+            return function (t) {
+              const currentAngle = t * rad;
+              return `rotate(${currentAngle * (180 / Math.PI)}, ${cx}, ${cy})`;
+            };
+          });
       });
-    };
 
-    const animateLine = (distance) => {
-      // Update the state with the new x position
-      setPointPosition(prevPosition => {
-        const newX = prevPosition.x + distance;
+    setPointPosition(prevPosition => {
+      let lines, closestCenter;
 
-        // Animate the point to the new position
-        g.selectAll('circle')
-          .transition()
-          .duration(1000)
-          .attr('cx', xScale(newX));
+      if (selector === '.pauli-x') {
+        lines = lines_x;
+      } else if (selector === '.pauli-y') {
+        lines = lines_y;
+      } else {
+        return prevPosition; // No change if not Pauli X or Y
+      }
 
-        return { ...prevPosition, x: newX };
-      });
-    };
+      // Find the closest center
+      closestCenter = lines.reduce((closest, line) => {
+        const distance = Math.abs(prevPosition.x - line.center[0]);
+        return distance < closest.distance ? { center: line.center, distance } : closest;
+      }, { center: lines[0].center, distance: Infinity }).center;
 
+      const [centerX, centerY] = closestCenter;
+      const x = prevPosition.x - centerX;
+      const y = prevPosition.y - centerY;
+      const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
+      const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+      const newX = rotatedX + centerX;
+      const newY = rotatedY + centerY;
+
+      // Animate the current point
+      const currentPoint = g.select('.current-point');
+      const startX = xScale(prevPosition.x);
+      const startY = yScale(prevPosition.y);
+      const endX = xScale(newX);
+      const endY = yScale(newY);
+
+      g.select('.previous-point').remove(); // Remove old previous point
+      currentPoint
+        .attr('class', 'previous-point')
+        .attr('fill', 'magenta')
+        .style('opacity', 0.5)
+        .transition()
+        .duration(1000)
+        .attr('cx', endX)
+        .attr('cy', endY);
+
+      g.append('circle')
+        .attr('cx', endX)
+        .attr('cy', endY)
+        .attr('r', 5)
+        .attr('fill', 'yellow')
+        .attr('class', 'current-point');
+
+      setPreviousPosition(prevPosition); // Update previous position
+
+      return { x: newX, y: newY };
+    });
+  };
+
+  const animateLine = (distance) => {
+    const { xScale, yScale } = createScales();
+    const g = d3.select(svgRef.current).select('g');
+
+    setPointPosition(prevPosition => {
+      const newX = prevPosition.x + distance;
+
+      g.select('.previous-point').remove(); // Remove old previous point
+      g.select('.current-point')
+        .attr('class', 'previous-point')
+        .attr('fill', 'magenta')
+        .style('opacity', 0.5);
+
+      g.append('circle')
+        .attr('cx', xScale(newX))
+        .attr('cy', yScale(prevPosition.y))
+        .attr('r', 5)
+        .attr('fill', 'yellow')
+        .attr('class', 'current-point');
+
+      setPreviousPosition({ ...prevPosition });
+
+      return { ...prevPosition, x: newX };
+    });
+  };
+
+  useEffect(() => {
+    const g = initializeSvg();
+    const { xScale, yScale } = createScales();
+
+    drawLines(g, xScale, yScale);
+    addLabels(g, xScale, yScale);
+    createLinesAndPoints(g, xScale, yScale);
+    setupButtons();
+  }, []);
+
+  useEffect(() => {
+    const g = d3.select(svgRef.current).select('g');
+    g.select('.previous-point').remove();
+    createLinesAndPoints(g, ...Object.values(createScales()));
   }, [pointPosition]);
 
   return (

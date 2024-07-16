@@ -256,7 +256,7 @@ const QuantumCircuitVisualization = () => {
 
     drawLines(g, xScale, yScale);
     addLabels(g, xScale, yScale);
-    createLinesAndPoints(g, xScale, yScale);
+    // createLinesAndPoints(g, xScale, yScale); removes duplicate point but also removes line color
     setupButtons();
   }, []);
 

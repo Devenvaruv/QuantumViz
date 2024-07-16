@@ -231,7 +231,8 @@ const QuantumCircuitVisualization = () => {
 
     setPointPosition(prevPosition => {
       // const newX = (prevPosition.x + distance) % 16;
-      const newX = ((prevPosition.x + distance) % 16 + 16) % 16;
+      // added y = 0 or 1  value for line logic
+      const newX = (prevPosition.y === 0 || 1) ? prevPosition.x : ((prevPosition.x + distance) % 16 + 16) % 16;
 
       g.select('.previous-point').remove(); // Remove old previous point
       g.select('.current-point')

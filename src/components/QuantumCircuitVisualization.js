@@ -4,7 +4,7 @@ import * as d3 from 'd3';
 const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const buttonContainerRef = useRef();
-  const [pointPosition, setPointPosition] = useState({ x: 2, y: 8 }); // Initial position of the point
+  const [pointPosition, setPointPosition] = useState({ x: 2, y: 8 });
 
   useEffect(() => {
     const svg = d3.select(svgRef.current)
@@ -15,7 +15,7 @@ const QuantumCircuitVisualization = () => {
       .attr('transform', 'translate(50,50)');
 
     // Set the limits for the x and y axes
-    const xScale = d3.scaleLinear().domain([0, 16]).range([0, 700]);
+    const xScale = d3.scaleLinear().domain([0, 16]).range([0, 600]);
     const yScale = d3.scaleLinear().domain([0, 8]).range([300, 0]); // Invert the y-scale
 
     // Add custom vertical and horizontal lines
@@ -60,7 +60,7 @@ const QuantumCircuitVisualization = () => {
     });
 
     // Create lines and points
-    const lines = [
+    const lines_x = [
       { start: [2, 0], end: [2, 8], center: [2, 4], color: 'red', id: 'pauli-x' },
       { start: [0, 4], end: [6, 4], center: [2, 4], color: 'red', id: 'pauli-x' },
       { start: [6, 4], end: [14, 4], center: [10, 4], color: 'red', id: 'pauli-x' },
@@ -78,7 +78,7 @@ const QuantumCircuitVisualization = () => {
       { position: pointPosition, color: 'yellow' }
     ];
 
-    const allLines = [...lines, ...lines_y];
+    const allLines = [...lines_x, ...lines_y];
 
     allLines.forEach(line => {
       g.append('line')
@@ -150,25 +150,39 @@ const QuantumCircuitVisualization = () => {
               };
             });
         });
+      setPointPosition(prevPosition => {
+        let lines, closestCenter;
 
-      if (selector === '.pauli-x' || selector === '.pauli-y') {
-        setPointPosition(prevPosition => {
-          const centerX = parseFloat(d3.select(`line.${selector.slice(1)}`).attr('data-center-x'));
-          const centerY = parseFloat(d3.select(`line.${selector.slice(1)}`).attr('data-center-y'));
-          const x = prevPosition.x - centerX;
-          const y = prevPosition.y - centerY;
-          const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
-          const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
-          const newX = rotatedX + centerX;
-          const newY = rotatedY + centerY;
-          g.selectAll('circle')
-            .transition()
-            .duration(1000)
-            .attr('cx', xScale(newX))
-            .attr('cy', yScale(newY));
-          return { x: newX, y: newY };
-        });
-      }
+        if (selector === '.pauli-x') {
+          lines = lines_x;
+        } else if (selector === '.pauli-y') {
+          lines = lines_y;
+        } else {
+          return prevPosition; // No change if not Pauli X or Y
+        }
+
+        // Find the closest center
+        closestCenter = lines.reduce((closest, line) => {
+          const distance = Math.abs(prevPosition.x - line.center[0]);
+          return distance < closest.distance ? { center: line.center, distance } : closest;
+        }, { center: lines[0].center, distance: Infinity }).center;
+
+        const [centerX, centerY] = closestCenter;
+        const x = prevPosition.x - centerX;
+        const y = prevPosition.y - centerY;
+        const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
+        const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+        const newX = rotatedX + centerX;
+        const newY = rotatedY + centerY;
+        
+        g.selectAll('circle')
+          .transition()
+          .duration(1000)
+          .attr('cx', xScale(newX))
+          .attr('cy', yScale(newY));
+        
+        return { x: newX, y: newY };
+      });
     };
 
     const animateLine = (distance) => {

@@ -83,7 +83,7 @@ const QuantumCircuitVisualization = () => {
 
   const createLinesAndPoints = (g, xScale, yScale) => {
     const points = [
-      { position: pointPosition, color: 'green' }
+      { position: pointPosition, color: 'green' },
     ];
 
     const allLines = [...lines_x, ...lines_y];
@@ -191,7 +191,8 @@ const QuantumCircuitVisualization = () => {
       const y = prevPosition.y - centerY;
       const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
       const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
-      const newX = rotatedX + centerX;
+      // const newX = rotatedX + centerX;
+      const newX = ((rotatedX + centerX) % 16 + 16) % 16;
       const newY = rotatedY + centerY;
 
       // Animate the current point
@@ -229,7 +230,8 @@ const QuantumCircuitVisualization = () => {
     const g = d3.select(svgRef.current).select('g');
 
     setPointPosition(prevPosition => {
-      const newX = prevPosition.x + distance;
+      // const newX = (prevPosition.x + distance) % 16;
+      const newX = ((prevPosition.x + distance) % 16 + 16) % 16;
 
       g.select('.previous-point').remove(); // Remove old previous point
       g.select('.current-point')

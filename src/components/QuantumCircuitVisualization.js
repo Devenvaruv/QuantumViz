@@ -1,26 +1,44 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 
+const DraggableGate = ({ name, onDragStart }) => {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, name)}
+      style={{
+        padding: '10px',
+        margin: '5px',
+        backgroundColor: '#f0f0f0',
+        border: '1px solid #ccc',
+        cursor: 'move',
+      }}
+    >
+      {name}
+    </div>
+  );
+};
+
 const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
-  const buttonContainerRef = useRef();
-  const [pointPosition, setPointPosition] = useState({ x: 2, y: 8 });
-  const [previousPosition, setPreviousPosition] = useState(null);
+  const [points, setPoints] = useState([
+    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: 'green', gates: [] },
+    { id: 2, position: { x: 6, y: 6 }, previousPosition: null, color: 'blue', gates: [] },
+    { id: 3, position: { x: 10, y: 2 }, previousPosition: null, color: 'orange', gates: [] }
+  ]);
 
   const initializeSvg = () => {
     const svg = d3.select(svgRef.current)
       .attr('width', 800)
       .attr('height', 400);
-    svg.selectAll('circle').remove();
-
+    svg.selectAll('*').remove();
     return svg.append('g')
       .attr('transform', 'translate(50,50)');
   };
 
   const createScales = () => {
     const xScale = d3.scaleLinear().domain([0, 16]).range([0, 600]);
-    const yScale = d3.scaleLinear().domain([0, 8]).range([300, 0]); // Invert the y-scale
-
+    const yScale = d3.scaleLinear().domain([0, 8]).range([300, 0]);
     return { xScale, yScale };
   };
 
@@ -82,10 +100,6 @@ const QuantumCircuitVisualization = () => {
   ];
 
   const createLinesAndPoints = (g, xScale, yScale) => {
-    const points = [
-      { position: pointPosition, color: 'green' },
-    ];
-
     const allLines = [...lines_x, ...lines_y];
 
     allLines.forEach(line => {
@@ -100,157 +114,98 @@ const QuantumCircuitVisualization = () => {
         .attr('data-center-y', line.center[1]);
     });
 
-    g.selectAll('.previous-point').remove(); // Remove old points before adding a new one
+    g.selectAll('.point').remove();
 
     points.forEach(point => {
-      g.select('.current-point').remove(); // Remove any existing current point
       g.append('circle')
         .attr('cx', xScale(point.position.x))
         .attr('cy', yScale(point.position.y))
         .attr('r', 5)
         .attr('fill', point.color)
-        .attr('data-initial-x', point.position.x)
-        .attr('data-initial-y', point.position.y)
-        .attr('class', 'current-point');
+        .attr('class', `point point-${point.id}`);
 
-      if (previousPosition) {
+      if (point.previousPosition) {
         g.append('circle')
-          .attr('cx', xScale(previousPosition.x))
-          .attr('cy', yScale(previousPosition.y))
+          .attr('cx', xScale(point.previousPosition.x))
+          .attr('cy', yScale(point.previousPosition.y))
           .attr('r', 5)
-          .attr('fill', 'magenta')
-          .attr('class', 'previous-point')
+          .attr('fill', point.color)
+          .attr('class', `previous-point previous-point-${point.id}`)
           .style('opacity', 0.5);
       }
     });
   };
 
-  const setupButtons = () => {
-    if (buttonContainerRef.current.children.length === 0) {
-      const buttonContainer = d3.select(buttonContainerRef.current);
-
-      const createButton = (text, onClick) => {
-        buttonContainer.append('button')
-          .text(text)
-          .on('click', onClick);
-      };
-
-      createButton('Pauli X Gate', () => rotateElements('.pauli-x', 180));
-      createButton('Pauli Y Gate', () => rotateElements('.pauli-y', 180));
-      createButton('Pauli Z Gate', () => animateLine(8));
-      createButton('S Gate', () => animateLine(4));
-      createButton('P Gate', () => animateLine(2));
-      createButton('T Gate', () => animateLine(1));
-      createButton('Hadamard Gate', () => {
-        rotateElements('.pauli-x', 180);
-        rotateElements('.pauli-y', 90);
-      });
-    }
+  const onDragStart = (e, gateName) => {
+    e.dataTransfer.setData('text/plain', gateName);
   };
 
-  const rotateElements = (selector, angle) => {
-    const { xScale, yScale } = createScales();
-    const rad = (Math.PI / 180) * angle;
-    const g = d3.select(svgRef.current).select('g');
+  const onDragOver = (e) => {
+    e.preventDefault();
+  };
 
-    d3.selectAll(selector)
-      .each(function () {
-        const element = d3.select(this);
-        const cx = xScale(element.attr('data-center-x'));
-        const cy = yScale(element.attr('data-center-y'));
+  const onDrop = (e, qubitId) => {
+    e.preventDefault();
+    const gateName = e.dataTransfer.getData('text');
+    applyGate(gateName, qubitId);
+  };
 
-        element.transition()
-          .duration(1000)
-          .attrTween("transform", function () {
-            return function (t) {
-              const currentAngle = t * rad;
-              return `rotate(${currentAngle * (180 / Math.PI)}, ${cx}, ${cy})`;
-            };
-          });
-      });
+  const applyGate = (gateName, qubitId) => {
+    setPoints(prevPoints => prevPoints.map(point => {
+      if (point.id === qubitId) {
+        const newGates = [...point.gates, gateName];
+        let newPosition = { ...point.position };
+        let newPreviousPosition = { ...point.position };
 
-    setPointPosition(prevPosition => {
-      let lines, closestCenter;
+        switch (gateName) {
+          case 'Pauli X':
+            newPosition = rotatePoint(point.position, '.pauli-x', 180);
+            break;
+          case 'Pauli Y':
+            newPosition = rotatePoint(point.position, '.pauli-y', 180);
+            break;
+          case 'Pauli Z':
+            newPosition = { ...point.position, x: (point.position.x + 8) % 16 };
+            break;
+          case 'S Gate':
+            newPosition = { ...point.position, x: (point.position.x + 4) % 16 };
+            break;
+          case 'T Gate':
+            newPosition = { ...point.position, x: (point.position.x + 2) % 16 };
+            break;
+          case 'Hadamard':
+            newPosition = rotatePoint(point.position, '.pauli-x', 180);
+            newPosition = rotatePoint(newPosition, '.pauli-y', 90);
+            break;
+          default:
+            console.log('Unknown gate');
+        }
 
-      if (selector === '.pauli-x') {
-        lines = lines_x;
-      } else if (selector === '.pauli-y') {
-        lines = lines_y;
-      } else {
-        return prevPosition; // No change if not Pauli X or Y
+        return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition };
       }
-
-      // Find the closest center
-      closestCenter = lines.reduce((closest, line) => {
-        const distance = Math.abs(prevPosition.x - line.center[0]);
-        return distance < closest.distance ? { center: line.center, distance } : closest;
-      }, { center: lines[0].center, distance: Infinity }).center;
-
-      const [centerX, centerY] = closestCenter;
-      const x = prevPosition.x - centerX;
-      const y = prevPosition.y - centerY;
-      const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
-      const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
-      // const newX = rotatedX + centerX;
-      const newX = ((rotatedX + centerX) % 16 + 16) % 16;
-      const newY = rotatedY + centerY;
-
-      // Animate the current point
-      const currentPoint = g.select('.current-point');
-      const startX = xScale(prevPosition.x);
-      const startY = yScale(prevPosition.y);
-      const endX = xScale(newX);
-      const endY = yScale(newY);
-
-      g.select('.previous-point').remove(); // Remove old previous point
-      currentPoint
-        .attr('class', 'previous-point')
-        .attr('fill', 'magenta')
-        .style('opacity', 0.5)
-        .transition()
-        .duration(1000)
-        .attr('cx', endX)
-        .attr('cy', endY);
-
-      g.append('circle')
-        .attr('cx', endX)
-        .attr('cy', endY)
-        .attr('r', 5)
-        .attr('fill', 'yellow')
-        .attr('class', 'current-point');
-
-      setPreviousPosition(prevPosition); // Update previous position
-
-      return { x: newX, y: newY };
-    });
+      return point;
+    }));
   };
 
-  const animateLine = (distance) => {
-    const { xScale, yScale } = createScales();
-    const g = d3.select(svgRef.current).select('g');
+  const rotatePoint = (position, selector, angle) => {
+    const rad = (Math.PI / 180) * angle;
+    const lines = selector === '.pauli-x' ? lines_x : lines_y;
 
-    setPointPosition(prevPosition => {
-      // const newX = (prevPosition.x + distance) % 16;
-      // added y = 0 or 1  value for line logic
-      const newX = (prevPosition.y === 0 || 1) ? prevPosition.x : ((prevPosition.x + distance) % 16 + 16) % 16;
+    const closestCenter = lines.reduce((closest, line) => {
+      const distance = Math.abs(position.x - line.center[0]);
+      return distance < closest.distance ? { center: line.center, distance } : closest;
+    }, { center: lines[0].center, distance: Infinity }).center;
 
-      g.select('.previous-point').remove(); // Remove old previous point
-      g.select('.current-point')
-        .attr('class', 'previous-point')
-        .attr('fill', 'magenta')
-        .style('opacity', 0.5);
+    const [centerX, centerY] = closestCenter;
+    const x = position.x - centerX;
+    const y = position.y - centerY;
+    const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
+    const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+    
+    const newX = ((rotatedX + centerX) % 16 + 16) % 16;
+    const newY = rotatedY + centerY;
 
-      g.append('circle')
-        .attr('cx', xScale(newX))
-        .attr('cy', yScale(prevPosition.y))
-        .attr('r', 5)
-        .attr('fill', 'yellow')
-        .attr('class', 'current-point');
-
-      setPreviousPosition({ ...prevPosition });
-
-      return { ...prevPosition, x: newX };
-    });
+    return { x: newX, y: newY };
   };
 
   useEffect(() => {
@@ -259,20 +214,63 @@ const QuantumCircuitVisualization = () => {
 
     drawLines(g, xScale, yScale);
     addLabels(g, xScale, yScale);
-    // createLinesAndPoints(g, xScale, yScale); removes duplicate point but also removes line color
-    setupButtons();
+    createLinesAndPoints(g, xScale, yScale);
   }, []);
 
   useEffect(() => {
     const g = d3.select(svgRef.current).select('g');
-    g.select('.previous-point').remove();
     createLinesAndPoints(g, ...Object.values(createScales()));
-  }, [pointPosition]);
+  }, [points]);
 
   return (
-    <div>
-      <svg ref={svgRef}></svg>
-      <div ref={buttonContainerRef}></div>
+    <div style={{ display: 'flex' }}>
+      <div style={{ width: '200px', padding: '10px' }}>
+        <h3>Gates</h3>
+        <DraggableGate name="Pauli X" onDragStart={onDragStart} />
+        <DraggableGate name="Pauli Y" onDragStart={onDragStart} />
+        <DraggableGate name="Pauli Z" onDragStart={onDragStart} />
+        <DraggableGate name="S Gate" onDragStart={onDragStart} />
+        <DraggableGate name="T Gate" onDragStart={onDragStart} />
+        <DraggableGate name="Hadamard" onDragStart={onDragStart} />
+      </div>
+      <div>
+        <svg ref={svgRef}></svg>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {points.map((point) => (
+            <div key={point.id} style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
+              <div style={{ width: '100px', textAlign: 'right', marginRight: '10px' }}>
+                Qubit {point.id}
+              </div>
+              <div 
+                style={{ 
+                  display: 'flex', 
+                  border: '2px dashed #ccc', 
+                  minHeight: '50px', 
+                  width: '500px',
+                  alignItems: 'center',
+                  padding: '5px'
+                }}
+                onDragOver={onDragOver}
+                onDrop={(e) => onDrop(e, point.id)}
+              >
+                {point.gates.map((gate, index) => (
+                  <div 
+                    key={index} 
+                    style={{
+                      padding: '5px 10px',
+                      margin: '0 5px',
+                      backgroundColor: '#e0e0e0',
+                      borderRadius: '5px'
+                    }}
+                  >
+                    {gate}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };

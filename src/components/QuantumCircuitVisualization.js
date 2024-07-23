@@ -22,10 +22,17 @@ const DraggableGate = ({ name, onDragStart }) => {
 const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const [points, setPoints] = useState([
-    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: 'green', gates: [] },
-    { id: 2, position: { x: 6, y: 6 }, previousPosition: null, color: 'blue', gates: [] },
-    { id: 3, position: { x: 10, y: 2 }, previousPosition: null, color: 'orange', gates: [] }
+    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: 'black', gates: [] },
+    { id: 2, position: { x: 6, y: 6 }, previousPosition: null, color: 'black', gates: [] },
+    { id: 3, position: { x: 10, y: 2 }, previousPosition: null, color: 'black', gates: [] }
   ]);
+
+  const handleColorChange = (id, newColor) => {
+    setPoints(prevPoints => prevPoints.map(point => 
+      point.id === id ? { ...point, color: newColor } : point
+    ));
+  };
+
 
   const initializeSvg = () => {
     const svg = d3.select(svgRef.current)
@@ -68,10 +75,13 @@ const QuantumCircuitVisualization = () => {
 
   const addLabels = (g, xScale, yScale) => {
     const labels = [
+      { x: -0.25, y: 8, text: '0', size: 12 },
+      { x: -0.25, y: 4, text: '1/2', size: 10 },
       { x: 1.75, y: 4.25, text: '+', size: 12 },
       { x: 5.75, y: 4.25, text: '+i', size: 10 },
       { x: 9.75, y: 4.25, text: '-', size: 12 },
       { x: 13.75, y: 4.25, text: '- i', size: 10 },
+      { x: -0.25, y: 0, text: '1', size: 12 },
     ];
 
     labels.forEach(label => {
@@ -170,8 +180,11 @@ const QuantumCircuitVisualization = () => {
           case 'S Gate':
             newPosition = { ...point.position, x: (point.position.x + 4) % 16 };
             break;
-          case 'T Gate':
+          case 'P Gate':
             newPosition = { ...point.position, x: (point.position.x + 2) % 16 };
+            break;
+          case 'T Gate':
+            newPosition = { ...point.position, x: (point.position.x + 1) % 16 };
             break;
           case 'Hadamard':
             newPosition = rotatePoint(point.position, '.pauli-x', 180);
@@ -230,6 +243,7 @@ const QuantumCircuitVisualization = () => {
         <DraggableGate name="Pauli Y" onDragStart={onDragStart} />
         <DraggableGate name="Pauli Z" onDragStart={onDragStart} />
         <DraggableGate name="S Gate" onDragStart={onDragStart} />
+        <DraggableGate name="P Gate" onDragStart={onDragStart} />
         <DraggableGate name="T Gate" onDragStart={onDragStart} />
         <DraggableGate name="Hadamard" onDragStart={onDragStart} />
       </div>
@@ -241,6 +255,12 @@ const QuantumCircuitVisualization = () => {
               <div style={{ width: '100px', textAlign: 'right', marginRight: '10px' }}>
                 Qubit {point.id}
               </div>
+              <input
+                 type="color" 
+                 value={point.color} 
+                 onChange={(e) => handleColorChange(point.id, e.target.value)}
+                 style={{ marginRight: '10px' }}
+              />
               <div 
                 style={{ 
                   display: 'flex', 

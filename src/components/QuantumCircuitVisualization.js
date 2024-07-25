@@ -124,25 +124,43 @@ const QuantumCircuitVisualization = () => {
         .attr('data-center-y', line.center[1]);
     });
 
-    g.selectAll('.point').remove();
+    g.selectAll('.point').remove();//remove and try
+
 
     points.forEach(point => {
-      g.append('circle')
-        .attr('cx', xScale(point.position.x))
-        .attr('cy', yScale(point.position.y))
+      const circle = g.selectAll(`.point-${point.id}`)
+        .data([point])
+        .join('circle')
+        .attr('class', `point point-${point.id}`)
         .attr('r', 5)
-        .attr('fill', point.color)
-        .attr('class', `point point-${point.id}`);
-
-      if (point.previousPosition) {
-        g.append('circle')
-          .attr('cx', xScale(point.previousPosition.x))
-          .attr('cy', yScale(point.previousPosition.y))
-          .attr('r', 5)
-          .attr('fill', point.color)
-          .attr('class', `previous-point previous-point-${point.id}`)
-          .style('opacity', 0.5);
-      }
+        .attr('fill', point.color);
+  
+        if (point.animationSteps && point.animationSteps.length > 0) {
+          circle
+          .attr('cx', xScale(point.position.x))
+          .attr('cy', yScale(point.position.y))
+          .transition()
+            .duration(1000)
+            .attrTween('cx', () => {
+              return t => {
+                const stepIndex = Math.min(Math.floor(t * point.animationSteps.length), point.animationSteps.length - 1);
+                console.log(point.animationSteps)
+                return xScale(point.animationSteps[stepIndex].x);
+              };
+            })
+            .attrTween('cy', () => {
+              return t => {
+                const stepIndex = Math.min(Math.floor(t * point.animationSteps.length), point.animationSteps.length - 1);
+                return yScale(point.animationSteps[stepIndex].y);
+              };
+            });
+        } else {
+          circle
+            .attr('cx', xScale(point.position.x))
+            .attr('cy', yScale(point.position.y));
+        }
+  
+      // ... (keep the existing code for previous position)
     });
   };
 
@@ -164,61 +182,133 @@ const QuantumCircuitVisualization = () => {
     setPoints(prevPoints => prevPoints.map(point => {
       if (point.id === qubitId) {
         const newGates = [...point.gates, gateName];
+        let animationSteps = [];
         let newPosition = { ...point.position };
         let newPreviousPosition = { ...point.position };
 
         switch (gateName) {
           case 'Pauli X':
-            newPosition = rotatePoint(point.position, '.pauli-x', 180);
+            animationSteps = calculateRotationSteps(point.position, 'x', 180);
             break;
           case 'Pauli Y':
-            newPosition = rotatePoint(point.position, '.pauli-y', 180);
+            animationSteps = calculateRotationSteps(point.position, 'y', 180);
             break;
           case 'Pauli Z':
-            newPosition = { ...point.position, x: (point.position.x + 8) % 16 };
+            animationSteps = calculateZRotationSteps(point.position, 180);
             break;
           case 'S Gate':
-            newPosition = { ...point.position, x: (point.position.x + 4) % 16 };
+            animationSteps = calculateZRotationSteps(point.position, 90);
             break;
           case 'P Gate':
-            newPosition = { ...point.position, x: (point.position.x + 2) % 16 };
+            animationSteps = calculateZRotationSteps(point.position, 45);
             break;
           case 'T Gate':
-            newPosition = { ...point.position, x: (point.position.x + 1) % 16 };
+            animationSteps = calculateZRotationSteps(point.position, 22.5);
             break;
           case 'Hadamard':
-            newPosition = rotatePoint(point.position, '.pauli-x', 180);
-            newPosition = rotatePoint(newPosition, '.pauli-y', 90);
+            animationSteps = calculateHadamardSteps(point.position);
             break;
           default:
             console.log('Unknown gate');
         }
+        newPosition = animationSteps[animationSteps.length - 1];
 
-        return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition };
+        return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition, animationSteps: animationSteps };
       }
       return point;
     }));
+  }; 
+  
+  const calculateRotationSteps = (position, axis, angle) => {
+    const steps = [];
+    const numSteps = 20;
+    let centerX, centerY;
+  
+    if (axis === 'x') {
+      centerX = Math.floor(position.x / 4) * 4 + 2;
+      centerY = 4;
+    } else if (axis === 'y') {
+      centerX = Math.floor((position.x - 2) / 4) * 4 + 6;
+      centerY = 4;
+    }
+
+  
+    const radius = Math.sqrt(Math.pow(position.x - centerX, 2) + Math.pow(position.y - centerY, 2));
+    const startAngle = Math.atan2(position.y - centerY, position.x - centerX);
+  
+    for (let i = 0; i <= numSteps; i++) {
+      const t = i / numSteps;
+      const currentAngle = startAngle + (angle * Math.PI / 180) * t;
+      steps.push({
+        x: centerX + radius * Math.cos(currentAngle),
+        y: centerY + radius * Math.sin(currentAngle)
+      });
+    }
+  
+    return steps;
   };
 
-  const rotatePoint = (position, selector, angle) => {
-    const rad = (Math.PI / 180) * angle;
-    const lines = selector === '.pauli-x' ? lines_x : lines_y;
-
-    const closestCenter = lines.reduce((closest, line) => {
-      const distance = Math.abs(position.x - line.center[0]);
-      return distance < closest.distance ? { center: line.center, distance } : closest;
-    }, { center: lines[0].center, distance: Infinity }).center;
-
-    const [centerX, centerY] = closestCenter;
-    const x = position.x - centerX;
-    const y = position.y - centerY;
-    const rotatedX = x * Math.cos(rad) - y * Math.sin(rad);
-    const rotatedY = x * Math.sin(rad) + y * Math.cos(rad);
+  const calculateZRotationSteps = (position, angle) => {
+    const steps = [];
+    const numSteps = 20;
+    const startX = position.x;
     
-    const newX = ((rotatedX + centerX) % 16 + 16) % 16;
-    const newY = rotatedY + centerY;
+    for (let i = 0; i <= numSteps; i++) {
+      const t = i / numSteps;
+      steps.push({
+        x: (startX + (angle / 22.5) * t) % 16,
+        y: position.y
+      });
+    }
+    
+    return steps;
+  };
+  
+  const calculateHadamardSteps = (position) => {
+    const xSteps = calculateRotationSteps(position, 'x', 180);
+    const finalX = xSteps[xSteps.length - 1];
+    const ySteps = calculateRotationSteps(finalX, 'y', 90);
+    return [...xSteps, ...ySteps];
+  };
+  //point.position, 'x', 180
+  const rotatePoint = (position, axis, angle) => {
+    const rad = (Math.PI / 180) * angle;
+    let { x, y } = position;
+    
+    switch (axis) {
+      case 'x':
+        // Rotate around X-axis
+        y = 4 + (y - 4) * Math.cos(rad) - (x - 8) * Math.sin(rad);
+        x = 8 - ((x - 8) * Math.cos(rad) + (y - 4) * Math.sin(rad));
+        break;
+      case 'y':
+        // Rotate around Y-axis
+        x = 8 + (x - 8) * Math.cos(rad) - (y - 4) * Math.sin(rad);
+        y = 4 + (y - 4) * Math.cos(rad) + (x - 8) * Math.sin(rad);
+        break;
+      case 'z':
+        // Rotate around Z-axis (change x position)
+        x = (x + angle / 22.5) % 16;
+        break;
+    }
+  
+    return { x, y };
+  };
 
-    return { x: newX, y: newY };
+  const calculatePauliXSteps = (position) => {
+    const steps = [];
+    const centerX = Math.floor(position.x / 4) * 4 + 2;
+    const centerY = 4;
+    const radius = Math.abs(position.y - centerY);
+    const startAngle = position.y < centerY ? 0 : Math.PI;
+    for (let i = 0; i <= 10; i++) {
+      const angle = startAngle + (Math.PI * i / 10);
+      steps.push({
+        x: centerX,
+        y: centerY + radius * Math.sin(angle)
+      });
+    }
+    return steps;
   };
 
   useEffect(() => {

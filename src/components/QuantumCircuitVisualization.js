@@ -239,10 +239,12 @@ const QuantumCircuitVisualization = () => {
     for (let i = 0; i <= numSteps; i++) {
       const t = i / numSteps;
       const currentAngle = startAngle + (angle * Math.PI / 180) * t;
-      steps.push({
-        x: centerX + radius * Math.cos(currentAngle),
-        y: centerY + radius * Math.sin(currentAngle)
-      });
+      let x = centerX + radius * Math.cos(currentAngle);
+      const y = centerY + radius * Math.sin(currentAngle);
+      x = ((x % 16) + 16) % 16;
+
+      steps.push({ x, y });
+
     }
   
     return steps;

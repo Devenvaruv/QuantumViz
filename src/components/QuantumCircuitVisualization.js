@@ -22,9 +22,9 @@ const DraggableGate = ({ name, onDragStart }) => {
 const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const [points, setPoints] = useState([
-    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: 'black', gates: [] },
-    { id: 2, position: { x: 6, y: 6 }, previousPosition: null, color: 'black', gates: [] },
-    { id: 3, position: { x: 10, y: 2 }, previousPosition: null, color: 'black', gates: [] }
+    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: '#00ff00', gates: [] },
+    { id: 2, position: { x: 6, y: 8 }, previousPosition: null, color: '#ff00ff', gates: [] },
+    { id: 3, position: { x: 10, y: 8 }, previousPosition: null, color: '#ffa500', gates: [] }
   ]);
 
   const handleColorChange = (id, newColor) => {
@@ -33,6 +33,7 @@ const QuantumCircuitVisualization = () => {
     ));
   };
 
+  
 
   const initializeSvg = () => {
     const svg = d3.select(svgRef.current)
@@ -96,17 +97,17 @@ const QuantumCircuitVisualization = () => {
   };
 
   const lines_x = [
-    { start: [2, 0], end: [2, 8], center: [2, 4], color: 'red', id: 'pauli-x' },
-    { start: [0, 4], end: [6, 4], center: [2, 4], color: 'red', id: 'pauli-x' },
-    { start: [6, 4], end: [14, 4], center: [10, 4], color: 'red', id: 'pauli-x' },
-    { start: [10, 0], end: [10, 8], center: [10, 4], color: 'red', id: 'pauli-x' }
+    { start: [2, 0], end: [2, 8], center: [2, 4], color: 'red', id: 'pauli-x-1' },
+    { start: [0, 4], end: [6, 4], center: [2, 4], color: 'red', id: 'pauli-x-2' },
+    { start: [6, 4], end: [14, 4], center: [10, 4], color: 'red', id: 'pauli-x-3' },
+    { start: [10, 0], end: [10, 8], center: [10, 4], color: 'red', id: 'pauli-x-4' }
   ];
 
   const lines_y = [
-    { start: [6, 0], end: [6, 8], center: [6, 4], color: 'blue', id: 'pauli-y' },
-    { start: [2, 4], end: [10, 4], center: [6, 4], color: 'blue', id: 'pauli-y' },
-    { start: [10, 4], end: [16, 4], center: [14, 4], color: 'blue', id: 'pauli-y' },
-    { start: [14, 0], end: [14, 8], center: [14, 4], color: 'blue', id: 'pauli-y' }
+    { start: [6, 0], end: [6, 8], center: [6, 4], color: 'blue', id: 'pauli-y-1' },
+    { start: [2, 4], end: [10, 4], center: [6, 4], color: 'blue', id: 'pauli-y-2' },
+    { start: [10, 4], end: [16, 4], center: [14, 4], color: 'blue', id: 'pauli-y-3' },
+    { start: [14, 0], end: [14, 8], center: [14, 4], color: 'blue', id: 'pauli-y-4' }
   ];
 
   const createLinesAndPoints = (g, xScale, yScale) => {
@@ -159,11 +160,10 @@ const QuantumCircuitVisualization = () => {
             .attr('cx', xScale(point.position.x))
             .attr('cy', yScale(point.position.y));
         }
-  
-      // ... (keep the existing code for previous position)
+
     });
   };
-
+  
   const onDragStart = (e, gateName) => {
     e.dataTransfer.setData('text/plain', gateName);
   };
@@ -171,13 +171,72 @@ const QuantumCircuitVisualization = () => {
   const onDragOver = (e) => {
     e.preventDefault();
   };
+  const createNewQubit = () => {
+    setPoints(prevPoints => {
+      const newId = prevPoints.length + 1;
+      const newQubit = {
+        id: newId,
+        position: { x: 2, y: 8 }, // Starting position
+        previousPosition: null,
+        color: `#${Math.floor(Math.random()*16777215).toString(16)}`, // Random color
+        gates: []
+      };
+      return [...prevPoints, newQubit];
+    });
+  };
 
   const onDrop = (e, qubitId) => {
     e.preventDefault();
     const gateName = e.dataTransfer.getData('text');
     applyGate(gateName, qubitId);
   };
-
+  const rotateLine = (lineClass, axis, angle) => {
+    const svg = d3.select(svgRef.current).select('g');
+    const lines = svg.selectAll(`[class^="${lineClass}"]`);
+    const { xScale, yScale } = createScales();
+  
+    lines.each(function() {
+      const line = d3.select(this);
+      const centerX = +line.attr('data-center-x');
+      const centerY = +line.attr('data-center-y');
+      const startX1 = +line.attr('x1');
+      const startY1 = +line.attr('y1');
+      const startX2 = +line.attr('x2');
+      const startY2 = +line.attr('y2');
+  
+      const radius1 = Math.sqrt(Math.pow(startX1 - xScale(centerX), 2) + Math.pow(startY1 - yScale(centerY), 2));
+      const radius2 = Math.sqrt(Math.pow(startX2 - xScale(centerX), 2) + Math.pow(startY2 - yScale(centerY), 2));
+      const startAngle1 = Math.atan2(startY1 - yScale(centerY), startX1 - xScale(centerX));
+      const startAngle2 = Math.atan2(startY2 - yScale(centerY), startX2 - xScale(centerX));
+  
+      line.transition()
+        .duration(1000)
+        .attrTween('x1', () => {
+          return t => {
+            const currentAngle = startAngle1 + (angle * Math.PI / 180) * t;
+            return xScale(centerX) + radius1 * Math.cos(currentAngle);
+          };
+        })
+        .attrTween('y1', () => {
+          return t => {
+            const currentAngle = startAngle1 + (angle * Math.PI / 180) * t;
+            return yScale(centerY) + radius1 * Math.sin(currentAngle);
+          };
+        })
+        .attrTween('x2', () => {
+          return t => {
+            const currentAngle = startAngle2 + (angle * Math.PI / 180) * t;
+            return xScale(centerX) + radius2 * Math.cos(currentAngle);
+          };
+        })
+        .attrTween('y2', () => {
+          return t => {
+            const currentAngle = startAngle2 + (angle * Math.PI / 180) * t;
+            return yScale(centerY) + radius2 * Math.sin(currentAngle);
+          };
+        });
+    });
+  };
   const applyGate = (gateName, qubitId) => {
     setPoints(prevPoints => prevPoints.map(point => {
       if (point.id === qubitId) {
@@ -185,13 +244,15 @@ const QuantumCircuitVisualization = () => {
         let animationSteps = [];
         let newPosition = { ...point.position };
         let newPreviousPosition = { ...point.position };
-
+  
         switch (gateName) {
           case 'Pauli X':
             animationSteps = calculateRotationSteps(point.position, 'x', 180);
+            rotateLine('pauli-x', 'x', -180);
             break;
           case 'Pauli Y':
             animationSteps = calculateRotationSteps(point.position, 'y', 180);
+            rotateLine('pauli-y', 'y', -180);
             break;
           case 'Pauli Z':
             animationSteps = calculateZRotationSteps(point.position, 180);
@@ -207,17 +268,19 @@ const QuantumCircuitVisualization = () => {
             break;
           case 'Hadamard':
             animationSteps = calculateHadamardSteps(point.position);
+            rotateLine('pauli-x', 'x', 180);
+            rotateLine('pauli-y', 'y', 90);
             break;
           default:
             console.log('Unknown gate');
         }
         newPosition = animationSteps[animationSteps.length - 1];
-
+  
         return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition, animationSteps: animationSteps };
       }
       return point;
     }));
-  }; 
+  };
   
   const calculateRotationSteps = (position, axis, angle) => {
     const steps = [];
@@ -241,6 +304,8 @@ const QuantumCircuitVisualization = () => {
       const currentAngle = startAngle + (angle * Math.PI / 180) * t;
       let x = centerX + radius * Math.cos(currentAngle);
       const y = centerY + radius * Math.sin(currentAngle);
+
+      
       x = ((x % 16) + 16) % 16;
 
       steps.push({ x, y });
@@ -272,46 +337,7 @@ const QuantumCircuitVisualization = () => {
     const ySteps = calculateRotationSteps(finalX, 'y', 90);
     return [...xSteps, ...ySteps];
   };
-  //point.position, 'x', 180
-  const rotatePoint = (position, axis, angle) => {
-    const rad = (Math.PI / 180) * angle;
-    let { x, y } = position;
-    
-    switch (axis) {
-      case 'x':
-        // Rotate around X-axis
-        y = 4 + (y - 4) * Math.cos(rad) - (x - 8) * Math.sin(rad);
-        x = 8 - ((x - 8) * Math.cos(rad) + (y - 4) * Math.sin(rad));
-        break;
-      case 'y':
-        // Rotate around Y-axis
-        x = 8 + (x - 8) * Math.cos(rad) - (y - 4) * Math.sin(rad);
-        y = 4 + (y - 4) * Math.cos(rad) + (x - 8) * Math.sin(rad);
-        break;
-      case 'z':
-        // Rotate around Z-axis (change x position)
-        x = (x + angle / 22.5) % 16;
-        break;
-    }
-  
-    return { x, y };
-  };
 
-  const calculatePauliXSteps = (position) => {
-    const steps = [];
-    const centerX = Math.floor(position.x / 4) * 4 + 2;
-    const centerY = 4;
-    const radius = Math.abs(position.y - centerY);
-    const startAngle = position.y < centerY ? 0 : Math.PI;
-    for (let i = 0; i <= 10; i++) {
-      const angle = startAngle + (Math.PI * i / 10);
-      steps.push({
-        x: centerX,
-        y: centerY + radius * Math.sin(angle)
-      });
-    }
-    return steps;
-  };
 
   useEffect(() => {
     const g = initializeSvg();
@@ -381,6 +407,18 @@ const QuantumCircuitVisualization = () => {
               </div>
             </div>
           ))}
+          <button
+          onClick={createNewQubit}
+          style={{
+            marginTop: '20px',
+            padding: '5px 10px',
+            fontSize: '16px',
+            cursor: 'pointer',
+            alignSelf: 'flex-start'
+          }}
+        >
+          + Add Qubit
+        </button> 
         </div>
       </div>
     </div>

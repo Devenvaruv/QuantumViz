@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import styled from 'styled-components';
+import d3Tip from 'd3-tip';
 
 const Container = styled.div`
   display: flex;
@@ -137,7 +138,7 @@ const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const [points, setPoints] = useState([
     { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: '#00ff00', gates: [] },
-    { id: 2, position: { x: 6, y: 8 }, previousPosition: null, color: '#ff00ff', gates: [] },
+    { id: 2, position: { x: 14, y: 8 }, previousPosition: null, color: '#ff00ff', gates: [] },
     { id: 3, position: { x: 10, y: 8 }, previousPosition: null, color: '#ffa500', gates: [] }
   ]);
 
@@ -224,7 +225,7 @@ const QuantumCircuitVisualization = () => {
     { start: [14, 0], end: [14, 8], center: [14, 4], color: 'blue', id: 'pauli-y-4' }
   ];
 
-  const createLinesAndPoints = (g, xScale, yScale) => {
+  const createLinesAndPoints = (g, xScale, yScale, tip) => {
     const allLines = [...lines_x, ...lines_y];
 
     allLines.forEach(line => {
@@ -248,7 +249,15 @@ const QuantumCircuitVisualization = () => {
         .join('circle')
         .attr('class', `point point-${point.id}`)
         .attr('r', 5)
-        .attr('fill', point.color);
+        .attr('fill', point.color)
+        .attr('cx', xScale(point.position.x))
+        .attr('cy', yScale(point.position.y))
+        .on('mouseover', function (event, d) {
+          const overlappingPoints = points.filter(p => p.position.x === d.position.x && p.position.y === d.position.y);
+          tip.html(`Qubits: ${overlappingPoints.map(p => p.id).join(', ')}`);
+          tip.show(event, this);
+        })
+        .on('mouseout', tip.hide);
   
         if (point.animationSteps && point.animationSteps.length > 0) {
           circle
@@ -268,11 +277,7 @@ const QuantumCircuitVisualization = () => {
                 return yScale(point.animationSteps[stepIndex].y);
               };
             });
-        } else {
-          circle
-            .attr('cx', xScale(point.position.x))
-            .attr('cy', yScale(point.position.y));
-        }
+        } 
 
     });
   };
@@ -351,48 +356,50 @@ const QuantumCircuitVisualization = () => {
     });
   };
   const applyGate = (gateName, qubitId) => {
-    setPoints(prevPoints => prevPoints.map(point => {
-      if (point.id === qubitId) {
-        const newGates = [...point.gates, gateName];
-        let animationSteps = [];
-        let newPosition = { ...point.position };
-        let newPreviousPosition = { ...point.position };
+    setPoints(prevPoints => {
+      return prevPoints.map(point => {
+        if (point.id === qubitId) {
+          const newGates = [...point.gates, gateName];
+          let animationSteps = [];
+          let newPosition = { ...point.position };
+          let newPreviousPosition = { ...point.position };
   
-        switch (gateName) {
-          case 'Pauli X':
-            animationSteps = calculateRotationSteps(point.position, 'x', 180);
-            rotateLine('pauli-x', 'x', -180);
-            break;
-          case 'Pauli Y':
-            animationSteps = calculateRotationSteps(point.position, 'y', 180);
-            rotateLine('pauli-y', 'y', -180);
-            break;
-          case 'Pauli Z':
-            animationSteps = calculateZRotationSteps(point.position, 180);
-            break;
-          case 'S Gate':
-            animationSteps = calculateZRotationSteps(point.position, 90);
-            break;
-          case 'P Gate':
-            animationSteps = calculateZRotationSteps(point.position, 45);
-            break;
-          case 'T Gate':
-            animationSteps = calculateZRotationSteps(point.position, 22.5);
-            break;
-          case 'Hadamard':
-            animationSteps = calculateHadamardSteps(point.position);
-            rotateLine('pauli-x', 'x', 180);
-            rotateLine('pauli-y', 'y', 90);
-            break;
-          default:
-            console.log('Unknown gate');
+          switch (gateName) {
+            case 'Pauli X':
+              animationSteps = calculateRotationSteps(point.position, 'x', 180);
+              rotateLine('pauli-x', 'x', -180);
+              break;
+            case 'Pauli Y':
+              animationSteps = calculateRotationSteps(point.position, 'y', 180);
+              rotateLine('pauli-y', 'y', -180);
+              break;
+            case 'Pauli Z':
+              animationSteps = calculateZRotationSteps(point.position, 180);
+              break;
+            case 'S Gate':
+              animationSteps = calculateZRotationSteps(point.position, 90);
+              break;
+            case 'P Gate':
+              animationSteps = calculateZRotationSteps(point.position, 45);
+              break;
+            case 'T Gate':
+              animationSteps = calculateZRotationSteps(point.position, 22.5);
+              break;
+            case 'Hadamard':
+              animationSteps = calculateHadamardSteps(point.position);
+              rotateLine('pauli-x', 'x', 180);
+              rotateLine('pauli-y', 'y', 90);
+              break;
+            default:
+              console.log('Unknown gate');
+          }
+          newPosition = animationSteps[animationSteps.length - 1];
+  
+          return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition, animationSteps: animationSteps };
         }
-        newPosition = animationSteps[animationSteps.length - 1];
-  
-        return { ...point, gates: newGates, position: newPosition, previousPosition: newPreviousPosition, animationSteps: animationSteps };
-      }
-      return point;
-    }));
+        return { ...point, animationSteps: [] }; // Clear animationSteps for other points
+      });
+    });
   };
   
   const calculateRotationSteps = (position, axis, angle) => {
@@ -455,15 +462,22 @@ const QuantumCircuitVisualization = () => {
   useEffect(() => {
     const g = initializeSvg();
     const { xScale, yScale } = createScales();
+    const tip = d3Tip().attr('class', 'd3-tip').html(() => '');
+  
+    g.call(tip);
 
     drawLines(g, xScale, yScale);
     addLabels(g, xScale, yScale);
-    createLinesAndPoints(g, xScale, yScale);
+    createLinesAndPoints(g, xScale, yScale, tip);
   }, []);
 
   useEffect(() => {
     const g = d3.select(svgRef.current).select('g');
-    createLinesAndPoints(g, ...Object.values(createScales()));
+    const tip = d3Tip().attr('class', 'd3-tip').html(() => '');
+  
+    g.call(tip);
+
+    createLinesAndPoints(g, ...Object.values(createScales()), tip);
   }, [points]);
 
   return (

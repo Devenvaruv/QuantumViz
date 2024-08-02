@@ -23,6 +23,15 @@
   font-size: calc(10px + 2vmin);
   color: white;
 }
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(31, 40, 51, 0.8);
+  color: #fff;
+  border-radius: 5px;
+}
+
 
 .App-link {
   color: #61dafb;
@@ -36,3 +45,4 @@
     transform: rotate(360deg);
   }
 }
+

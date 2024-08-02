@@ -1,21 +1,135 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import styled from 'styled-components';
+
+const Container = styled.div`
+  display: flex;
+  font-family: 'Roboto', sans-serif;
+  background-color: #C5C6C7;
+  padding: 20px;
+  color: #1F2833;
+`;
+
+const Sidebar = styled.div`
+  width: 220px;
+  padding: 20px;
+  background-color: #1F2833;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+`;
+
+const GateButton = styled.div`
+  padding: 12px;
+  margin: 12px 0;
+  background-color: #45A29E;
+  color: #1F2833;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  font-weight: 500;
+
+  &:hover {
+    background-color: #66FCF1;
+    box-shadow: 0 0 10px rgba(102, 252, 241, 0.5);
+    transform: translateY(-2px);
+  }
+`;
+
+const GateDropZone = styled.div`
+  display: flex;
+  border: 2px dashed #1F2833;
+  min-height: 50px;
+  width: 500px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: rgba(31, 40, 51, 0.05);
+  transition: all 0.3s ease;
+
+  &:hover {
+    background-color: rgba(31, 40, 51, 0.1);
+  }
+`;
+
+const AppliedGate = styled.div`
+  padding: 5px 10px;
+  margin: 0 5px;
+  background-color: #45A29E;
+  color: #1F2833;
+  border-radius: 5px;
+  font-size: 14px;
+`;
+
+const AddQubitButton = styled.button`
+  margin-top: 20px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #66FCF1;
+  color: #1F2833;
+  border: none;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  font-weight: bold;
+
+  &:hover {
+    background-color: #45A29E;
+    box-shadow: 0 0 10px rgba(102, 252, 241, 0.5);
+    transform: translateY(-2px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
+const MainContent = styled.div`
+  margin-left: 20px;
+  flex: 1;
+`;
+
+const QubitContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 15px 0;
+`;
+
+const QubitLabel = styled.div`
+  width: 100px;
+  text-align: right;
+  margin-right: 15px;
+  font-weight: bold;
+  color: #1F2833;
+`;
+
+const ColorInput = styled.input`
+  margin-right: 15px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+  }
+`;
 
 const DraggableGate = ({ name, onDragStart }) => {
   return (
-    <div
+    <GateButton
       draggable
       onDragStart={(e) => onDragStart(e, name)}
-      style={{
-        padding: '10px',
-        margin: '5px',
-        backgroundColor: '#f0f0f0',
-        border: '1px solid #ccc',
-        cursor: 'move',
-      }}
     >
       {name}
-    </div>
+    </GateButton>
   );
 };
 
@@ -145,7 +259,6 @@ const QuantumCircuitVisualization = () => {
             .attrTween('cx', () => {
               return t => {
                 const stepIndex = Math.min(Math.floor(t * point.animationSteps.length), point.animationSteps.length - 1);
-                console.log(point.animationSteps)
                 return xScale(point.animationSteps[stepIndex].x);
               };
             })
@@ -176,7 +289,7 @@ const QuantumCircuitVisualization = () => {
       const newId = prevPoints.length + 1;
       const newQubit = {
         id: newId,
-        position: { x: 2, y: 8 }, // Starting position
+        position: { x: 14, y: 8 }, // Starting position
         previousPosition: null,
         color: `#${Math.floor(Math.random()*16777215).toString(16)}`, // Random color
         gates: []
@@ -354,8 +467,8 @@ const QuantumCircuitVisualization = () => {
   }, [points]);
 
   return (
-    <div style={{ display: 'flex' }}>
-      <div style={{ width: '200px', padding: '10px' }}>
+    <Container>
+      <Sidebar>
         <h3>Gates</h3>
         <DraggableGate name="Pauli X" onDragStart={onDragStart} />
         <DraggableGate name="Pauli Y" onDragStart={onDragStart} />
@@ -364,64 +477,36 @@ const QuantumCircuitVisualization = () => {
         <DraggableGate name="P Gate" onDragStart={onDragStart} />
         <DraggableGate name="T Gate" onDragStart={onDragStart} />
         <DraggableGate name="Hadamard" onDragStart={onDragStart} />
-      </div>
-      <div>
+      </Sidebar>
+      <MainContent>
         <svg ref={svgRef}></svg>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div>
           {points.map((point) => (
-            <div key={point.id} style={{ display: 'flex', alignItems: 'center', margin: '10px 0' }}>
-              <div style={{ width: '100px', textAlign: 'right', marginRight: '10px' }}>
-                Qubit {point.id}
-              </div>
-              <input
-                 type="color" 
-                 value={point.color} 
-                 onChange={(e) => handleColorChange(point.id, e.target.value)}
-                 style={{ marginRight: '10px' }}
+            <QubitContainer key={point.id}>
+              <QubitLabel>Qubit {point.id}</QubitLabel>
+              <ColorInput
+                type="color"
+                value={point.color}
+                onChange={(e) => handleColorChange(point.id, e.target.value)}
               />
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  border: '2px dashed #ccc', 
-                  minHeight: '50px', 
-                  width: '500px',
-                  alignItems: 'center',
-                  padding: '5px'
-                }}
+              <GateDropZone
                 onDragOver={onDragOver}
                 onDrop={(e) => onDrop(e, point.id)}
               >
                 {point.gates.map((gate, index) => (
-                  <div 
-                    key={index} 
-                    style={{
-                      padding: '5px 10px',
-                      margin: '0 5px',
-                      backgroundColor: '#e0e0e0',
-                      borderRadius: '5px'
-                    }}
-                  >
+                  <AppliedGate key={index}>
                     {gate}
-                  </div>
+                  </AppliedGate>
                 ))}
-              </div>
-            </div>
+              </GateDropZone>
+            </QubitContainer>
           ))}
-          <button
-          onClick={createNewQubit}
-          style={{
-            marginTop: '20px',
-            padding: '5px 10px',
-            fontSize: '16px',
-            cursor: 'pointer',
-            alignSelf: 'flex-start'
-          }}
-        >
-          + Add Qubit
-        </button> 
+          <AddQubitButton onClick={createNewQubit}>
+            + Qubit
+          </AddQubitButton>
         </div>
-      </div>
-    </div>
+      </MainContent>
+    </Container>
   );
 };
 

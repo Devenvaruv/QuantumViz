@@ -106,8 +106,8 @@ const QubitLabel = styled.div`
 
 const ColorInput = styled.input`
   margin-right: 15px;
-  width: 40px;
-  height: 40px;
+  width: 25px;
+  height: 25px;
   border: none;
   border-radius: 50%;
   overflow: hidden;
@@ -123,6 +123,8 @@ const ColorInput = styled.input`
   }
 `;
 
+
+
 const DraggableGate = ({ name, onDragStart }) => {
   return (
     <GateButton
@@ -137,9 +139,9 @@ const DraggableGate = ({ name, onDragStart }) => {
 const QuantumCircuitVisualization = () => {
   const svgRef = useRef();
   const [points, setPoints] = useState([
-    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: '#00ff00', gates: [] },
-    { id: 2, position: { x: 14, y: 8 }, previousPosition: null, color: '#ff00ff', gates: [] },
-    { id: 3, position: { x: 10, y: 8 }, previousPosition: null, color: '#ffa500', gates: [] }
+    { id: 1, position: { x: 2, y: 8 }, previousPosition: null, color: '#522B47', gates: [] },
+    { id: 2, position: { x: 14, y: 8 }, previousPosition: null, color: '#2274A5', gates: [] },
+    { id: 3, position: { x: 10, y: 8 }, previousPosition: null, color: '#EEFC57', gates: [] }
   ]);
 
   const handleColorChange = (id, newColor) => {
@@ -254,7 +256,7 @@ const QuantumCircuitVisualization = () => {
         .attr('cy', yScale(point.position.y))
         .on('mouseover', function (event, d) {
           const overlappingPoints = points.filter(p => p.position.x === d.position.x && p.position.y === d.position.y);
-          tip.html(`Qubits: ${overlappingPoints.map(p => p.id).join(', ')}`);
+          tip.html(`Qubit ${overlappingPoints.map(p => p.id).join(', ')}`);
           tip.show(event, this);
         })
         .on('mouseout', tip.hide);
@@ -483,7 +485,6 @@ const QuantumCircuitVisualization = () => {
   return (
     <Container>
       <Sidebar>
-        <h3>Gates</h3>
         <DraggableGate name="Pauli X" onDragStart={onDragStart} />
         <DraggableGate name="Pauli Y" onDragStart={onDragStart} />
         <DraggableGate name="Pauli Z" onDragStart={onDragStart} />

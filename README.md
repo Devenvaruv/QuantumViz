@@ -1,66 +1,57 @@
-# Getting Started with Create React App
+# QuantumViz
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+QuantumViz is a React-based interactive visualization prototype for exploring how common single-qubit gates move qubit states across a custom 2D diagram.
 
-## Available Scripts
+The project is aimed at intuition and visual learning rather than full quantum-circuit simulation. It combines React for the UI, D3 for SVG drawing and animation, and styled-components for the interface styling.
 
-In the project directory, you can run:
+## High-Level Overview
 
-### `npm start`
+This repository contains a small frontend app centered around one main idea: represent qubits as colored points, let the user apply gates to them, and animate how those gates change each qubit's position in the visualization.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+At the moment, the app is best understood as a prototype or teaching tool. It already has an interactive gate palette, animated state transitions, and support for multiple qubits, but it does not yet implement a full routing structure or a complete quantum simulation engine.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## How to Start It
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js
+- npm
 
-### `npm run build`
+### Install dependencies
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```bash
+npm install
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Start the development server
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+npm start
+```
 
-### `npm run eject`
+Then open `http://localhost:3000` in your browser.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## What It Does
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+When the app starts, it renders a header and a single main visualization view.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The visualization currently supports:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- A sidebar of draggable gates: `Pauli X`, `Pauli Y`, `Pauli Z`, `S Gate`, `P Gate`, `T Gate`, and `Hadamard`
+- A D3-based SVG diagram showing a custom state-space layout
+- Multiple qubits represented as colored points
+- Per-qubit drop zones where gates can be applied
+- Animated point movement when a gate is dropped onto a qubit
+- A color picker for each qubit
+- A button to add additional qubits
+- Tooltips when qubits overlap at the same position
 
-## Learn More
+## Current Scope
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+This app currently focuses on visualizing gate effects through predefined animation rules. It is not yet a full-featured quantum circuit editor or simulator.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Areas that are still prototype-level include:
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Default CRA scaffold pieces that have not been fully customized
+- Header navigation without matching route pages
+- Minimal automated testing
